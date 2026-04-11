@@ -1,3 +1,5 @@
+![](assets/gokil.jpg)
+
 # Markdown Gokil (DOCX to MD Converter)
 
 A robust Go-based utility to convert .docx documents into clean, structured Markdown (.md) files. Designed to preserve essential formatting from original documents.
