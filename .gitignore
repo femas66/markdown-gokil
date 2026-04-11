@@ -1,0 +1,28 @@
+# Build artifacts
+/build/
+/markdown-gokil
+/markdown-gokil.exe
+
+# Output files
+outputs/
+*.md
+!README.md
+
+# Office Lock Files
+.~lock.*#
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Go
+go.work
+.env
+
+# DOCX files
+*.docx
+
+# Artifacts
+/images/
+/outputs/
+/build/
