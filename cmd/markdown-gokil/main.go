@@ -61,10 +61,10 @@ func main() {
 	fmt.Printf("🚀 Converting %s to %s...\n", inputPath, outputPath)
 
 	engine := converter.NewEngine()
-	err = engine.Convert(inputPath, outputPath)
+	finalPath, err := engine.Convert(inputPath, outputPath)
 	if err != nil {
 		log.Fatalf("❌ Error during conversion: %v", err)
 	}
 
-	fmt.Println("✨ Conversion successful!")
+	fmt.Printf("✨ Conversion successful! Output: %s\n", finalPath)
 }

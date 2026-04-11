@@ -18,7 +18,7 @@ func NewEngine() *Engine {
 }
 
 // Convert parses docx and writes markdown output
-func (e *Engine) Convert(inputPath, outputPath string) error {
+func (e *Engine) Convert(inputPath, outputPath string) (string, error) {
 	// Get filename without extension for folder name
 	baseName := filepath.Base(outputPath)
 	ext := filepath.Ext(baseName)
@@ -33,7 +33,7 @@ func (e *Engine) Convert(inputPath, outputPath string) error {
 
 	// Check if output folder already exists
 	if _, err := os.Stat(finalFolder); !os.IsNotExist(err) {
-		return fmt.Errorf("output folder '%s' already exists. Use a different name or delete the folder", finalFolder)
+		return "", fmt.Errorf("output folder '%s' already exists. Use a different name or delete the folder", finalFolder)
 	}
 
 	// Set final paths for .md file and images folder
@@ -43,25 +43,25 @@ func (e *Engine) Convert(inputPath, outputPath string) error {
 	// Process docx: unzip, extract images, map relations, and parse content
 	doc, err := docx.Parse(inputPath, imageDir)
 	if err != nil {
-		return fmt.Errorf("failed to process docx: %w", err)
+		return "", fmt.Errorf("failed to process docx: %w", err)
 	}
 
 	// Generate Markdown content
 	mdContent, err := markdown.FromDocument(doc)
 	if err != nil {
-		return fmt.Errorf("failed to generate markdown: %w", err)
+		return "", fmt.Errorf("failed to generate markdown: %w", err)
 	}
 
 	// Create output directory and its parents
 	if err := os.MkdirAll(finalFolder, 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
+		return "", fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	// Write markdown to file in the output folder
 	err = os.WriteFile(finalMDPath, []byte(mdContent), 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
+		return "", fmt.Errorf("failed to write output file: %w", err)
 	}
 
-	return nil
+	return finalMDPath, nil
 }

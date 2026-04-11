@@ -19,8 +19,6 @@ Thumbs.db
 go.work
 .env
 
-# DOCX files
-*.docx
 
 # Artifacts
 /images/
