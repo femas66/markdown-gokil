@@ -265,6 +265,10 @@ func parseDocumentXML(r io.Reader, rels map[string]string, numbering *Numbering)
 	var paraHasBold bool
 
 	// List state
+	listCounters := make(map[string]map[int]int)
+	var lastNumId string
+	var lastIlvl int = -1
+
 	var paraNumId string
 	var paraIlvl int = -1
 
@@ -300,6 +304,25 @@ func parseDocumentXML(r io.Reader, rels map[string]string, numbering *Numbering)
 				paraHasBold = false
 				paraNumId = ""
 				paraIlvl = -1
+			case "pStyle":
+				for _, attr := range se.Attr {
+					if attr.Name.Local == "val" {
+						styleVal := strings.ToLower(attr.Value)
+						if strings.Contains(styleVal, "title") || strings.Contains(styleVal, "heading1") {
+							if maxFontSize < 24 {
+								maxFontSize = 24.0
+							}
+						} else if strings.Contains(styleVal, "heading2") {
+							if maxFontSize < 18 {
+								maxFontSize = 18.0
+							}
+						} else if strings.Contains(styleVal, "heading3") {
+							if maxFontSize < 14 {
+								maxFontSize = 14.0
+							}
+						}
+					}
+				}
 			case "numId":
 				for _, attr := range se.Attr {
 					if attr.Name.Local == "val" {
@@ -363,13 +386,23 @@ func parseDocumentXML(r io.Reader, rels map[string]string, numbering *Numbering)
 		case xml.CharData:
 			if inText {
 				text := string(se)
-				// Apply text formatting
-				if formatBold && formatItalic {
-					currentParagraph.WriteString("***" + text + "***")
-				} else if formatBold {
-					currentParagraph.WriteString("**" + text + "**")
-				} else if formatItalic {
-					currentParagraph.WriteString("*" + text + "*")
+				trimmed := strings.TrimSpace(text)
+
+				if (formatBold || formatItalic) && trimmed != "" {
+					// Extract leading and trailing whitespace
+					startIdx := strings.Index(text, trimmed)
+					leading := text[:startIdx]
+					trailing := text[startIdx+len(trimmed):]
+
+					var marker string
+					if formatBold && formatItalic {
+						marker = "***"
+					} else if formatBold {
+						marker = "**"
+					} else {
+						marker = "*"
+					}
+					currentParagraph.WriteString(leading + marker + trimmed + marker + trailing)
 				} else {
 					currentParagraph.WriteString(text)
 				}
@@ -400,7 +433,10 @@ func parseDocumentXML(r io.Reader, rels map[string]string, numbering *Numbering)
 					if inCell {
 						continue
 					}
-					paras = append(paras, text)
+					// Only allow one empty paragraph to avoid excessive spacing
+					if len(paras) > 0 && paras[len(paras)-1] != "" {
+						paras = append(paras, "")
+					}
 					continue
 				}
 
@@ -409,14 +445,16 @@ func parseDocumentXML(r io.Reader, rels map[string]string, numbering *Numbering)
 				}
 
 				var prefix string
-				if maxFontSize >= 24 {
-					prefix = "# "
-				} else if maxFontSize >= 18 {
-					prefix = "## "
-				} else if maxFontSize >= 14 {
-					prefix = "### "
-				} else if maxFontSize >= 13 || (maxFontSize >= 12 && paraHasBold) {
-					prefix = "#### "
+				if !inCell && paraNumId == "" {
+					if maxFontSize >= 24 {
+						prefix = "# "
+					} else if maxFontSize >= 18 {
+						prefix = "## "
+					} else if maxFontSize >= 14 {
+						prefix = "### "
+					} else if maxFontSize >= 13 || (maxFontSize >= 12 && paraHasBold) {
+						prefix = "#### "
+					}
 				}
 
 				// Remove redundant bold if it's a heading
@@ -440,23 +478,41 @@ func parseDocumentXML(r io.Reader, rels map[string]string, numbering *Numbering)
 
 					marker := "- " // Default bullet
 					if absId, ok := numbering.NumMap[paraNumId]; ok {
-						if fmt, ok := numbering.Format[absId][paraIlvl]; ok {
-							switch fmt {
+						if fmtStr, ok := numbering.Format[absId][paraIlvl]; ok {
+							if listCounters[paraNumId] == nil {
+								listCounters[paraNumId] = make(map[int]int)
+							}
+
+							// Reset deeper levels if we moved up or changed list
+							if paraNumId != lastNumId || paraIlvl < lastIlvl {
+								for l := range listCounters[paraNumId] {
+									if l > paraIlvl {
+										listCounters[paraNumId][l] = 0
+									}
+								}
+							}
+
+							listCounters[paraNumId][paraIlvl]++
+							count := listCounters[paraNumId][paraIlvl]
+
+							switch fmtStr {
 							case "decimal":
-								marker = "1. "
+								marker = fmt.Sprintf("%d. ", count)
 							case "lowerLetter":
-								marker = "a. "
+								marker = fmt.Sprintf("%c. ", 'a'+(count-1)%26)
 							case "upperLetter":
-								marker = "A. "
+								marker = fmt.Sprintf("%c. ", 'A'+(count-1)%26)
 							case "lowerRoman":
-								marker = "i. "
+								marker = fmt.Sprintf("%s. ", intToRoman(count, false))
 							case "upperRoman":
-								marker = "I. "
+								marker = fmt.Sprintf("%s. ", intToRoman(count, true))
 							default:
 								marker = "- "
 							}
 						}
 					}
+					lastNumId = paraNumId
+					lastIlvl = paraIlvl
 					fullText = listPrefix + marker + fullText
 				}
 
@@ -515,4 +571,23 @@ func formatMarkdownTable(rows [][]string) string {
 		}
 	}
 	return sb.String()
+}
+
+func intToRoman(n int, upper bool) string {
+	if n <= 0 {
+		return ""
+	}
+	vals := []int{1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1}
+	syms := []string{"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"}
+	res := ""
+	for i := 0; i < len(vals); i++ {
+		for n >= vals[i] {
+			res += syms[i]
+			n -= vals[i]
+		}
+	}
+	if !upper {
+		return strings.ToLower(res)
+	}
+	return res
 }
