@@ -40,7 +40,49 @@ Run the following command to convert a document:
 ./build/markdown-gokil input.docx hasil
 ```
 
-The conversion output will be available in the `outputs/result/` folder.
+The conversion output will be structured as a folder containing the `.md` file and its extracted images.
+
+### Struktur Output & Ekstraksi Gambar
+
+Jika dokumen `.docx` memiliki gambar, gambar tersebut akan diekstraksi secara otomatis ke folder `images` di dalam folder output:
+`outputs/<nama_output>/images/`
+
+**Contoh Struktur Output:**
+Jika Anda menjalankan perintah:
+```bash
+./build/markdown-gokil contoh.docx
+```
+Maka struktur folder yang dihasilkan adalah:
+```text
+outputs/contoh/
+├── contoh.md
+└── images/
+    ├── image1.png
+    └── image2.jpeg
+```
+Di dalam file `contoh.md`, gambar akan otomatis dirujuk menggunakan path relatif: `![image](images/image1.png)`.
+
+## Alur Kerja (Workflow) Konversi
+
+Proses konversi dari berkas `.docx` menjadi berkas Markdown (`.md`) bekerja dengan langkah-langkah berikut:
+
+```mermaid
+graph TD
+    A[Mulai Konversi] --> B[Validasi Input & Tentukan Output]
+    B --> C[Ekstrak Gambar dari word/media/ ke outputs/folder/images/]
+    C --> D[Baca Hubungan Gambar di word/_rels/document.xml.rels]
+    D --> E[Parse Konten & Gaya dari word/document.xml]
+    E --> F[Generate Struktur Markdown]
+    F --> G[Tulis berkas .md ke outputs/folder/nama.md]
+    G --> H[Selesai]
+```
+
+1. **Validasi & Penentuan Output**: Memastikan file input berformat `.docx` dan menentukan nama folder output di bawah direktori `outputs/`.
+2. **Ekstraksi Gambar (Media)**: Karena berkas `.docx` sebenarnya adalah arsip ZIP, aplikasi mengekstrak semua aset gambar yang berada di dalam folder `word/media/` langsung ke folder tujuan `outputs/<nama_output>/images/`.
+3. **Pemetaan Relasi (Relationships)**: Membaca berkas relasi internal `word/_rels/document.xml.rels` untuk memetakan ID gambar ke nama berkas gambar agar referensi gambar di dalam dokumen XML dapat dicocokkan dengan benar.
+4. **Parsing Konten XML**: Membaca berkas utama `word/document.xml` untuk mem-parse paragraf, gaya teks (tebal, miring), list (bullet/numbered), tabel, dan mendeteksi heading berdasarkan ukuran font.
+5. **Pembuatan Markdown**: Menerjemahkan semua node XML yang di-parse menjadi sintaks Markdown bersih dengan referensi path gambar yang sesuai (`![image](images/nama_gambar.ext)`).
+6. **Penulisan Berkas**: Membuat folder tujuan dan menulis file `.md` akhir.
 
 ## MCP (Model Context Protocol) Support
 
