@@ -15,5 +15,8 @@ clean:
 run input output="":
     {{GO}} run cmd/{{BINARY_NAME}}/main.go {{input}} {{output}}
 
+mcp:
+    {{GO}} run cmd/{{BINARY_NAME}}/main.go -mcp
+
 tidy:
     {{GO}} mod tidy

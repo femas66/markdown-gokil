@@ -9,14 +9,26 @@ import (
 	"strings"
 
 	"femas66/markdown-gokil/internal/converter"
+	"femas66/markdown-gokil/internal/mcp"
 )
 
 func main() {
+	mcpFlag := flag.Bool("mcp", false, "Run as an MCP (Model Context Protocol) server over stdio")
+
 	// Parse flags for any possible future flags, but we mainly care about positional args now
 	flag.Usage = func() {
 		fmt.Println("Usage: markdown-gokil <input.docx> [output_name]")
+		fmt.Println("       markdown-gokil -mcp")
 	}
 	flag.Parse()
+
+	if *mcpFlag {
+		if err := mcp.StartServer(); err != nil {
+			log.Fatalf("❌ MCP Server error: %v", err)
+		}
+		return
+	}
+
 	args := flag.Args()
 
 	if len(args) < 1 {

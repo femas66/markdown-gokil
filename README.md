@@ -42,12 +42,55 @@ Run the following command to convert a document:
 
 The conversion output will be available in the `outputs/result/` folder.
 
+## MCP (Model Context Protocol) Support
+
+This application can run as an MCP server, allowing AI agents (such as Claude Desktop, Cursor, Windsurf, etc.) to use it as a tool to convert `.docx` files into Markdown.
+
+### Tool: `convert_docx`
+- **Arguments:**
+  - `inputPath` (string, required): The absolute or relative path to the input `.docx` file to convert.
+  - `outputPath` (string, optional): The optional path where the markdown file will be saved. If omitted, saves in `outputs/<foldername>/<filename>.md`.
+
+### Running the MCP Server
+To start the MCP server over stdio:
+```bash
+./build/markdown-gokil -mcp
+```
+or via `just`:
+```bash
+just mcp
+```
+
+### AI Agent Integration Example
+
+#### Claude Desktop
+Add the following to your `claude_desktop_config.json` (usually located at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "markdown-gokil": {
+      "command": "/usr/local/bin/go",
+      "args": [
+        "run",
+        "cmd/markdown-gokil/main.go",
+        "-mcp"
+      ],
+      "cwd": "/Users/femasakbarfathurohim/Documents/Developments/GO/markdown-hebat"
+    }
+  }
+}
+```
+> [!NOTE]
+> Make sure to adjust the `command` (path to your `go` binary if not in path) and `cwd` (path to this project directory) in your config file.
+
 ## Development
 
 This project uses Justfile (a modern alternative to Makefile) for task automation:
 
 - `just build`: Compiles the application to `build/`.
 - `just run <input.docx> [output_name]`: Runs the conversion directly.
+- `just mcp`: Starts the MCP server over stdio.
 - `just tidy`: Cleans up Go dependencies.
 - `just clean`: Removes the build folder and binary.
 
